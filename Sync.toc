@@ -1,0 +1,7 @@
+## Interface: 20504
+## Title: Sync
+## Version: 0.1b
+## Author: Singmyr
+## SavedVariablesPerCharacter: Sync, SyncJSON
+
+Sync.lua
