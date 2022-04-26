@@ -1,11 +1,15 @@
 --[[
     @todo: Get secondary professions.
     @todo: Get profession cooldowns.
+     - GetSpellCooldown(29688) - Transmute: Primal Might
+      - https://wowwiki-archive.fandom.com/wiki/API_GetSpellCooldown
+      - Figure out how to calculate how much time is left.
+     - IsSpellKnown(29688) - Transmute: Primal Might
+      - https://wowwiki-archive.fandom.com/wiki/API_IsSpellKnown
     @todo: Get bank contents.
-    @todo: Get gbank contents.
+    @todo: Get gbank contents. (Only for <Singmyr>)
     @todo: Get mail contents.
  ]]
-
 
 local f = CreateFrame("frame")
 local events = {}
@@ -13,19 +17,15 @@ local events = {}
 Sync = Sync or {}
 
 function events:BAG_UPDATE(...)
-    if Sync then
-        local bagID = ...
-        if bagID < 0 then
-            return
-        end
-        SyncInventory()
+    local bagID = ...
+    if bagID < 0 then
+        return
     end
+    SyncInventory()
 end
 
--- Not used yet.
--- Not sure what we can dump here, probably no API calls, just formatting.
 function events:PLAYER_LOGOUT(...)
-    -- Dump the player's inventory
+    Sync["timestamp"] = GetServerTime()
     SyncJSON = recursiveJSON(Sync)
 end
 
@@ -97,7 +97,7 @@ function SyncProfessions()
     end
 end
 
-function SyncGold()
+function SyncMoney()
     -- Sync["gold"] = GetCoinText(GetMoney(), ", ")
     Sync["gold"] = GetMoney()
 end
@@ -135,21 +135,37 @@ function SyncInventory()
     end
 end
 
+function events:PLAYER_XP_UPDATE(...)
+    SyncCharacter()
+end
+
+function events:UPDATE_EXHAUSTION(...)
+    SyncCharacter()
+end
+
+function events:PLAYER_LEVEL_UP(...)
+    SyncCharacter()
+end
+
+function events:PLAYER_MONEY(...)
+    SyncMoney()
+end
+
 function events:ADDON_LOADED(...)
     local name = ...
     if name == "Sync" then
-        Sync = Sync or {}
-        
-        SyncCharacter()
-
-        SyncInventory()
+        Sync = Sync or {}    
     end
 end
 
 function events:PLAYER_ENTERING_WORLD(...)
-    SyncGold()
+    SyncMoney()
 
     SyncProfessions()
+
+    SyncCharacter()
+
+    SyncInventory()
 end
 
 f:SetScript("OnEvent", function(self, event, ...)
