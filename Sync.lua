@@ -7,8 +7,10 @@
      - IsSpellKnown(29688) - Transmute: Primal Might
       - https://wowwiki-archive.fandom.com/wiki/API_IsSpellKnown
     @todo: Get bank contents.
-    @todo: Get gbank contents. (Only for <Singmyr>)
+    @todo: Get gbank contents. (Only for <Golf Clap>)
+     - Should only use the information with the latest timestamp.
     @todo: Get mail contents.
+    @todo: Get bank containers.
  ]]
 
 local f = CreateFrame("frame")
@@ -21,11 +23,15 @@ function events:BAG_UPDATE(...)
     if bagID < 0 then
         return
     end
+    Touch()
     SyncInventory()
 end
 
-function events:PLAYER_LOGOUT(...)
+function Touch()
     Sync["timestamp"] = GetServerTime()
+end
+
+function events:PLAYER_LOGOUT(...)
     SyncJSON = recursiveJSON(Sync)
 end
 
@@ -59,6 +65,7 @@ function events:BANKFRAME_OPENED(...)
 end ]]
 
 function SyncCharacter()
+    Touch()
     if Sync["character"] == nil then
         Sync["character"] = {}
     end
@@ -81,9 +88,9 @@ function SyncCharacter()
 end
 
 function SyncProfessions()
-    if Sync["professions"] == nil then
-        Sync["professions"] = {}
-    end
+    Touch()
+    -- Reset this to avoid having data that's no longer there.
+    Sync["professions"] = {}
     for skillIndex = 1, GetNumSkillLines() do
         local skillName, isHeader, _, skillRank, _, _,
             skillMaxRank, isAbandonable, _, _, _, _,
@@ -98,11 +105,30 @@ function SyncProfessions()
 end
 
 function SyncMoney()
+    Touch()
     -- Sync["gold"] = GetCoinText(GetMoney(), ", ")
     Sync["gold"] = GetMoney()
 end
 
+function SyncContainers()
+    Touch()
+    Sync["containers"] = {}
+    for containerID=BACKPACK_CONTAINER+1,NUM_BAG_SLOTS,1 do
+        numSlots = GetContainerNumSlots(containerID)
+        Sync["containers"][containerID] = {}
+        if numSlots > 0 then
+            bagName = GetBagName(containerID)
+            Sync["containers"][containerID]["slots"] = numSlots
+            Sync["containers"][containerID]["name"] = bagName
+        else
+            Sync["containers"][containerID]["slots"] = 0
+            Sync["containers"][containerID]["name"] = ""
+        end
+    end
+end
+
 function SyncInventory()
+    Touch()
     if Sync["inventory"] == nil then
         Sync["inventory"] = {}
     end
@@ -166,6 +192,8 @@ function events:PLAYER_ENTERING_WORLD(...)
     SyncCharacter()
 
     SyncInventory()
+
+    SyncContainers()
 end
 
 f:SetScript("OnEvent", function(self, event, ...)
